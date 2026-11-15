@@ -53,3 +53,9 @@ A versão entregue fica marcada com a tag **`BASELINE`**.
 | [Especificação da Parte 1](docs/parte1-especificacao.md) | Requisitos: os serviços, a instrumentação, o roteiro de observação e a entrega. **É a fonte da verdade.** |
 | [Como executar](EXECUCAO.md) | O que instalar, como subir e parar os serviços, o catálogo e a configuração. |
 | [Como testar](TESTES.md) | Testes manuais com `curl`, o script `testes.sh` (o que verifica, como ler o resultado) e os testes unitários. |
+
+
+## Equipe
+
+- Francisca Gabrielly Lopes Freire - @gabrielly-freire
+- Jadilson Igor de Campos Lopes - @xxxx
