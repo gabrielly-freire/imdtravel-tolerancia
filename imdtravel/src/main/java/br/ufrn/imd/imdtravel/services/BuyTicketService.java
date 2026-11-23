@@ -2,11 +2,17 @@ package br.ufrn.imd.imdtravel.services;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 
 import org.springframework.stereotype.Service;
 
 import br.ufrn.imd.imdtravel.client.AirlinesClient;
 import br.ufrn.imd.imdtravel.client.ExchangeClient;
+import br.ufrn.imd.imdtravel.client.FidelityClient;
+import br.ufrn.imd.imdtravel.config.CorrelationContext;
+import br.ufrn.imd.imdtravel.models.Sale;
+import br.ufrn.imd.imdtravel.repositories.SalesRepository;
+import br.ufrn.imd.imdtravel.dtos.clients.SellResponse;
 import br.ufrn.imd.imdtravel.dtos.BuyTicketRequest;
 import br.ufrn.imd.imdtravel.dtos.BuyTicketResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.ConvertResponse;
@@ -18,10 +24,15 @@ public class BuyTicketService {
 
     private final AirlinesClient airlines;
     private final ExchangeClient exchange;
+    private final FidelityClient fidelity;
+    private final SalesRepository sales;
 
-    public BuyTicketService(AirlinesClient airlines, ExchangeClient exchange) {
+    public BuyTicketService(AirlinesClient airlines, ExchangeClient exchange,
+            FidelityClient fidelity, SalesRepository sales) {
         this.airlines = airlines;
         this.exchange = exchange;
+        this.fidelity = fidelity;
+        this.sales = sales;
     }
 
     public BuyTicketResponse buy(BuyTicketRequest request) {
@@ -33,10 +44,14 @@ public class BuyTicketService {
         BigDecimal valueBRL = brl(valueUSD, conv.rate());
         int bonus = bonus(valueUSD);
 
-        // TODO tarefa #5: POST /sell (3), POST /bonus (4), gravar em SalesRepository e
-        // montar o BuyTicketResponse (valueUSD, valueBRL, conv.rate(), conv.asOf(), bonus).
-        throw new UnsupportedOperationException(
-                "passos 3 e 4 pendentes (#5): valueBRL=" + valueBRL + " bonus=" + bonus);
+        SellResponse sale = airlines.sell(request.flight(), request.day());           // 3
+        fidelity.bonus(request.user(), bonus);                                         // 4
+
+        sales.save(new Sale(CorrelationContext.getCid(), sale.transactionId(), request.flight(),
+                request.day(), request.user(), valueUSD, valueBRL, Instant.now()));
+
+        return new BuyTicketResponse(sale.transactionId(), request.flight(), request.day(),
+                request.user(), valueUSD, valueBRL, conv.rate(), conv.asOf(), bonus);
     }
 
     /** valueBRL = priceUSD x rate, com 2 casas. */
