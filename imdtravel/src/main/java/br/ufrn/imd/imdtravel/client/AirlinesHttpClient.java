@@ -5,8 +5,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import br.ufrn.imd.imdtravel.dtos.clients.FlightResponse;
+import br.ufrn.imd.imdtravel.dtos.clients.SellRequest;
 import br.ufrn.imd.imdtravel.dtos.clients.SellResponse;
 import br.ufrn.imd.imdtravel.exceptions.NotFoundException;
+import br.ufrn.imd.imdtravel.exceptions.SoldOutException;
 
 @Component
 public class AirlinesHttpClient implements AirlinesClient {
@@ -31,6 +33,13 @@ public class AirlinesHttpClient implements AirlinesClient {
 
     @Override
     public SellResponse sell(String flight, String day) {
-        throw new UnsupportedOperationException("POST /sell: tarefa #5");
+        return http.post()
+                .uri("/sell")
+                .body(new SellRequest(flight, day))
+                .retrieve()
+                .onStatus(s -> s.value() == 409, (req, res) -> {
+                    throw new SoldOutException("sold-out");
+                })
+                .body(SellResponse.class);
     }
 }
