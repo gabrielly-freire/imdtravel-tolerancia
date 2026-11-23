@@ -1,0 +1,18 @@
+=== 1. ESTOQUE INICIAL (IMD200 2026-12-01) ===
+{"flight":"IMD200","day":"2026-12-01","priceUSD":420.50,"seatsAvailable":20}
+Total de vendas antes: 22
+=== 2. DISPARANDO 25 COMPRAS SIMULTANEAS PARA 20 ASSENTOS ===
+Distribuicao dos status codes:
+     20 201
+      5 409
+=== 3. ESTOQUE FINAL NO AIRLINESHUB ===
+{"flight":"IMD200","day":"2026-12-01","priceUSD":420.50,"seatsAvailable":0}
+Total de vendas depois: 42 (aumento de 20)
+=== 4. TENTATIVA ADICIONAL NO PAR ESGOTADO ===
+HTTP/1.1 409 
+X-Correlation-Id: f9170663-0636-4cfe-b1a3-767a62c66b4c
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 23 Nov 2026 12:55:40 GMT
+
+{"error":"sold-out"}
