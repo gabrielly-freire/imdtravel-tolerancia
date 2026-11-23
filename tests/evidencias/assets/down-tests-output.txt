@@ -1,0 +1,9 @@
+=== 1. TESTE AIRLINESHUB FORA ===
+AirlinesHub parado: status=500 em 8s
+=== 2. TESTE EXCHANGE FORA ===
+Exchange parado: status=500 em 0s
+=== 3. LOGS POR CID ===
+{"ts":"2026-11-23T12:53:51.845262981Z","svc":"imdtravel","cid":"teste-airlines-down-1","event":"requisicao.recebida","ms":0,"method":"POST","path":"/buyTicket"}
+{"ts":"2026-11-23T12:53:59.858446070Z","svc":"imdtravel","cid":"teste-airlines-down-1","event":"resposta.enviada","ms":8013,"method":"POST","path":"/buyTicket","status":500}
+{"ts":"2026-11-23T12:54:08.431539515Z","svc":"imdtravel","cid":"teste-exchange-down-1","event":"requisicao.recebida","ms":0,"method":"POST","path":"/buyTicket"}
+{"ts":"2026-11-23T12:54:08.437433334Z","svc":"imdtravel","cid":"teste-exchange-down-1","event":"resposta.enviada","ms":5,"method":"POST","path":"/buyTicket","status":500}

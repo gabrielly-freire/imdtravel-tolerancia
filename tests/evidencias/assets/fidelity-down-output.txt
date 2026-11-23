@@ -1,0 +1,11 @@
+=== 1. ESTOQUE ANTES ===
+{"flight":"IMD100","day":"2026-12-06","priceUSD":411.75,"seatsAvailable":20}
+=== 2. PARANDO FIDELITY E COMPRANDO ===
+Fidelity parado: status=500 em 8s
+=== 3. ESTOQUE DEPOIS (ASSENTO FOI CONSUMIDO) ===
+{"flight":"IMD100","day":"2026-12-06","priceUSD":411.75,"seatsAvailable":19}
+=== 4. BUSCA EM /SALES PELO CID (SEM LINHA NOVA) ===
+[]
+=== 5. LOGS ESTRUTURADOS DO IMDTRAVEL ===
+{"ts":"2026-11-23T13:16:41.685940901Z","svc":"imdtravel","cid":"print-falha-fidelity","event":"requisicao.recebida","ms":0,"method":"POST","path":"/buyTicket"}
+{"ts":"2026-11-23T13:16:50.030297659Z","svc":"imdtravel","cid":"print-falha-fidelity","event":"resposta.enviada","ms":8344,"method":"POST","path":"/buyTicket","status":500}

@@ -1,0 +1,64 @@
+
+== Subindo o sistema do zero (down -v, up --build --wait)
+
+== 1. GET /health nos quatro serviços
+  [32mok[0m imdtravel: status ok e uptimeS numérico
+  [32mok[0m airlineshub: status ok e uptimeS numérico
+  [32mok[0m exchange: status ok e uptimeS numérico
+  [32mok[0m fidelity: status ok e uptimeS numérico
+
+== 2. Uma compra bem-sucedida
+  par: IMD100 2026-12-01   usuário: r1795438196-ana   cid: r1795438196-cid-1
+  [32mok[0m status 201
+  [32mok[0m resposta tem os 9 campos, nenhum nulo
+  [32mok[0m flight, day e user ecoam o pedido
+  [32mok[0m valueBRL = valueUSD × rate (2 casas)
+  [32mok[0m bonus = parte inteira de valueUSD
+  [32mok[0m rate na faixa de 5,00 a 6,00
+  [32mok[0m X-Correlation-Id devolvido é o enviado
+  [32mok[0m estoque baixou exatamente 1
+  [32mok[0m GET /sales ganhou exatamente 1 linha
+  [32mok[0m a linha de /sales tem o cid da compra
+  [32mok[0m a linha de /sales tem transactionId, par, usuário, valores e instante
+  [32mok[0m Fidelity creditou o bônus ao usuário
+  [32mok[0m a entrada no Fidelity tem o mesmo cid (propagado até a chamada 4)
+
+== 3. Sem X-Correlation-Id, o IMDTravel gera um
+  [32mok[0m status 201
+  [32mok[0m cabeçalho X-Correlation-Id presente na resposta
+  [32mok[0m o cid gerado aparece em GET /sales
+
+== 4. Preço determinístico e taxa estável entre dois ticks
+  [32mok[0m duas consultas ao mesmo par dão o mesmo preço
+  [32mok[0m a compra usou esse preço
+  (as duas leituras caíram em ticks diferentes; comparação pulada)
+
+== 5. Pedidos inválidos não consomem assento nem geram venda
+  [32mok[0m voo inexistente → 404
+  [32mok[0m corpo do 404 é { error: not-found }
+  [32mok[0m dia fora do catálogo → 404
+  [32mok[0m sem o campo day → 400
+  [32mok[0m corpo do 400 é { error: invalid-request }
+  [32mok[0m user vazio → 400
+  [32mok[0m JSON malformado → 400
+  [32mok[0m estoque inalterado
+  [32mok[0m GET /sales inalterado
+
+== 6. Esgotamento sob concorrência
+  par: IMD100 2026-12-02   25 compras simultâneas para 20 assentos
+  [32mok[0m respostas 201
+  [32mok[0m respostas 409
+  [32mok[0m nenhuma outra resposta
+  [32mok[0m estoque terminou em 0 (nunca negativo)
+  [32mok[0m GET /sales ganhou exatamente 20 linhas
+  [32mok[0m mais uma compra no par esgotado → 409
+  [32mok[0m corpo do 409 é { error: sold-out }
+  [32mok[0m quem recebeu 409 não ganhou bônus
+
+== 7. Fidelity parado: falha depois do passo irreversível
+  a compra levou 139s para responder
+  [32mok[0m a compra devolveu 500
+  [32mok[0m o assento foi consumido mesmo assim
+  [32mok[0m nenhuma linha nova em GET /sales
+
+== Resumo: [32m42 passaram[0m, 0 falharam
