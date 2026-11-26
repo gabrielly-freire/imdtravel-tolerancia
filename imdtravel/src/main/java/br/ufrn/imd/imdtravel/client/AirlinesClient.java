@@ -19,6 +19,8 @@ public interface AirlinesClient {
      * POST /sell { flight, day } — consome um assento.
      *
      * @throws SoldOutException quando o AirlinesHub devolve 409 (sem assento)
+     * @throws br.ufrn.imd.imdtravel.exceptions.SaleUnknownException quando o POST saiu mas a venda
+     *         não foi confirmada (timeout, conexão fechada, 5xx ou resposta inválida); não repetir
      */
     SellResponse sell(String flight, String day);
 }

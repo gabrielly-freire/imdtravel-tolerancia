@@ -110,10 +110,9 @@ curl -s -w ' [%{http_code}] %{time_total}s\n' -H 'Content-Type: application/json
      -d '{"flight":"IMD200","day":"2026-12-01","user":"bia"}' localhost:8080/buyTicket
 docker compose start fidelity
 ```
-Esperado: **500** — e o assento de IMD200/2026-12-01 foi consumido mesmo assim, sem linha
-nova em `/sales`. A resposta **pode levar de segundos a mais de dois minutos**: na Parte 1
-o IMDTravel não tem timeout nas chamadas de saída. Isso não é defeito; é o que o roteiro de
-observação mede.
+Esperado: **201** com `"degraded":true` e `"degradations":["bonus-not-credited"]`, o assento
+de IMD200/2026-12-01 consumido uma vez e uma linha nova em `/sales`. A venda já estava
+confirmada quando o bônus falhou; o crédito não é reenviado nesta versão.
 
 ---
 
@@ -150,7 +149,7 @@ Roda no bash do macOS, do Linux e do WSL no Windows.
 | **4. Determinismo** | O mesmo par tem sempre o mesmo preço, e a compra usou esse preço; duas leituras com o mesmo `asOf` têm a mesma taxa. |
 | **5. Pedidos inválidos** | Voo inexistente e dia fora do catálogo → 404; campo faltando, usuário vazio e JSON malformado → 400; nenhum deles mexe no estoque nem em `/sales`. |
 | **6. Esgotamento** | 25 compras simultâneas para 20 assentos → exatamente 20 × 201 e 5 × 409, estoque 0, 20 linhas novas; mais uma compra → 409 `sold-out`, sem bônus. |
-| **7. Falha** (só com `--com-falhas`) | Com o Fidelity parado, a compra devolve 500, **o assento é consumido** e não entra linha em `/sales`. O script mostra quanto tempo a compra levou e religa o Fidelity no fim. |
+| **7. Falha** (só com `--com-falhas`) | Com o Fidelity parado, a compra devolve 201 degradada (`bonus-not-credited`), o assento é consumido uma vez e entra uma linha em `/sales`. O script mostra quanto tempo a compra levou e religa o Fidelity no fim. |
 
 ### Como ler o resultado
 
@@ -213,4 +212,4 @@ antes de testar e diz qual projeto está no ar e onde ele foi subido.
 | `falta o comando: jq` | Instale o `jq` (veja [o que instalar](EXECUCAO.md#1-o-que-instalar)). |
 | No Windows: `bad interpreter` ou `$'\r': command not found` | O arquivo ficou com fim de linha CRLF: `sed -i 's/\r$//' testes.sh`. |
 | `nenhum par com assento livre — rode com --reiniciar` | O catálogo inteiro foi vendido: `./testes.sh --reiniciar`. |
-| A seção 7 parece travada | É esperado: com o Fidelity parado, a compra pode levar mais de dois minutos para dar 500 (não há timeout na Parte 1). O script espera até 10 minutos. |
+| A seção 7 demora | Parar e religar o Fidelity leva alguns segundos; a compra em si responde dentro do timeout do bônus. |

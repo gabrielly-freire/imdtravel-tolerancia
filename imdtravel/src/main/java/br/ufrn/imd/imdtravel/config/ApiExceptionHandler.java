@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
 
 import br.ufrn.imd.imdtravel.dtos.config.ErrorResponse;
+import br.ufrn.imd.imdtravel.dtos.config.SaleUnknownResponse;
 import br.ufrn.imd.imdtravel.exceptions.DeadlineExceededException;
 import br.ufrn.imd.imdtravel.exceptions.InvalidRequestException;
 import br.ufrn.imd.imdtravel.exceptions.NotFoundException;
+import br.ufrn.imd.imdtravel.exceptions.SaleUnknownException;
 import br.ufrn.imd.imdtravel.exceptions.SoldOutException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 
@@ -33,6 +35,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SoldOutException.class)
     public ResponseEntity<ErrorResponse> soldOut(SoldOutException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("sold-out"));
+    }
+
+    @ExceptionHandler(SaleUnknownException.class)
+    public ResponseEntity<SaleUnknownResponse> saleUnknown(SaleUnknownException e) {
+        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
+                .body(new SaleUnknownResponse("unknown", "sale-unknown"));
     }
 
     @ExceptionHandler(CallNotPermittedException.class)

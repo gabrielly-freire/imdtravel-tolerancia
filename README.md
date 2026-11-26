@@ -63,6 +63,26 @@ Todos os parâmetros possuem valor padrão declarado no [`docker-compose.yml`](d
 | `CB_WAIT_DURATION_OPEN_MS` | `5000` | Tempo em estado `OPEN` rejeitando requisições localmente (fail-fast) antes de transicionar automaticamente para `HALF_OPEN`. |
 | `CB_HALF_OPEN_PERMITTED_CALLS` | `1` | Quantidade de chamadas de sondagem permitidas em `HALF_OPEN` para confirmar recuperação sem sobrecarregar a dependência. |
 
+### Resposta da compra (`POST /buyTicket`)
+
+O `201` mantém os 9 campos da Parte 1 e só sai quando o `/sell` confirmou a venda (`201` com `transactionId`). Dois campos foram acrescentados:
+
+- `degraded`: `true` quando a compra foi concluída em condição degradada;
+- `degradations`: lista do que foi degradado (vazia numa compra normal).
+
+| Valor em `degradations` | Significado |
+|---|---|
+| `bonus-not-credited` | A venda está confirmada e registrada em `/sales`, mas o crédito do bônus não foi confirmado pelo Fidelity (fora do ar, lento, com erro, circuito aberto ou prazo interno esgotado). Não há reenvio nesta versão. Num timeout, o bônus pode ter sido creditado sem que o IMDTravel saiba. |
+
+Quando o `/sell` sai mas não há confirmação (timeout, conexão fechada, `5xx` ou resposta inválida), não se sabe se o assento foi vendido. O IMDTravel **não repete a chamada**, não grava a venda e responde:
+
+```
+HTTP 504
+{"status":"unknown","error":"sale-unknown"}
+```
+
+O log registra o evento `venda.desconhecida` (com `cid`, `flight`, `day`, `user` e `motivo`) para a conferência posterior. O cliente não deve repetir a compra às cegas: o assento pode já ter sido vendido. Falhas em que se sabe que não houve venda (conexão recusada, circuito aberto, prazo esgotado antes do `/sell`, `409`) continuam com as respostas de erro comuns.
+
 > **Endpoint `GET /status` (esquema provisório):** retorna `"status": "ok" | "degraded"`, o estado atual e métricas de cada um dos 4 circuit breakers (`flight`, `convert`, `sell`, `bonus`) e a configuração ativa. (Validar com professor)
 
 ### Tabela de Rastreabilidade (Parte 2)
@@ -70,6 +90,8 @@ Todos os parâmetros possuem valor padrão declarado no [`docker-compose.yml`](d
 | Falha tolerada | Estratégia adotada (padrão do catálogo) | Onde está no código | Teste que demonstra |
 |---|---|---|---|
 | **P1** (Prazo total `<= 5000 ms`, inclusive com container pausado) | **Timeout por chamada** (`connectTimeout` + `readTimeout` em HTTP/1.1 por endpoint) + **Prazo interno global (`RequestDeadline`)** antes de cada etapa | [`RestClientConfig.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/RestClientConfig.java), [`ResilienceProperties.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ResilienceProperties.java), [`RequestDeadline.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/services/RequestDeadline.java), [`BuyTicketService.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/services/BuyTicketService.java) | `BuyTicketServiceTest#shouldStopBeforeCallingNextStageWhenDeadlineExceeded`, `ResilienceTest#requestDeadlineTracksElapsedAndThrowsWhenExpired`, `docker compose pause airlineshub` (`~1.4s` → `504`) |
+| **P3** (No máximo um assento por compra, sob Omissão) | **Sem repetição do `POST /sell`** (não há chave de idempotência no AirlinesHub) | [`AirlinesHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/AirlinesHttpClient.java) | `AirlinesHttpClientSellTest#shouldReportUnknownWithoutRetryingWhenSellTimesOut`, `#shouldReportUnknownWithoutRetryingWhenConnectionClosesWithoutResponse` |
+| **P4** (Resposta honesta) | `201` só com venda confirmada; `504` `unknown` quando não se sabe; `degraded`/`degradations` quando a compra conclui degradada | [`AirlinesHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/AirlinesHttpClient.java), [`ApiExceptionHandler.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ApiExceptionHandler.java), [`BuyTicketService.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/services/BuyTicketService.java) | `AirlinesHttpClientSellTest`, `BuyTicketServiceTest#shouldSellOnceAndRecordNothingWhenSaleResultIsUnknown`, `#shouldRecordSaleAndDeclareDegradationWhenFidelityFails`, `./cenario.sh omissao` |
 | **P7** (Falha rápida sob falha persistente, proteção contra sobrecarga e volta automática) | **Circuit Breaker isolado por endpoint** (`Resilience4j`, `COUNT_BASED`, ignora `404`/`409`) + **`GET /status`** + logs `cb.transicao` / `cb.rejeitada` | [`ResilienceConfig.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ResilienceConfig.java), [`AirlinesHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/AirlinesHttpClient.java), [`ExchangeHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/ExchangeHttpClient.java), [`FidelityHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/FidelityHttpClient.java), [`StatusController.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/controllers/StatusController.java), [`ApiExceptionHandler.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ApiExceptionHandler.java) | `ResilienceTest#circuitBreakerOpensAtThresholdRejectsFastAndRecoversAutomatically`, `ResilienceTest#businessExceptionsDoNotOpenCircuitBreaker`, `./cenario.sh tempo 1 8 6` (`503` em `~11–14 ms` após abrir e volta automática em `6 s`) |
 
 ---

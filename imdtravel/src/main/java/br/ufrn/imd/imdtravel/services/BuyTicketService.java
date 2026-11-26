@@ -3,6 +3,8 @@ package br.ufrn.imd.imdtravel.services;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -19,11 +21,15 @@ import br.ufrn.imd.imdtravel.dtos.clients.FlightResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.SellResponse;
 import br.ufrn.imd.imdtravel.exceptions.DeadlineExceededException;
 import br.ufrn.imd.imdtravel.exceptions.InvalidRequestException;
+import br.ufrn.imd.imdtravel.exceptions.SaleUnknownException;
 import br.ufrn.imd.imdtravel.models.Sale;
 import br.ufrn.imd.imdtravel.repositories.SalesRepository;
 
 @Service
 public class BuyTicketService {
+
+    /** Valor de {@code degradations}: venda confirmada, mas sem confirmação do crédito do bônus. */
+    static final String BONUS_NOT_CREDITED = "bonus-not-credited";
 
     private final AirlinesClient airlines;
     private final ExchangeClient exchange;
@@ -57,16 +63,40 @@ public class BuyTicketService {
         int bonus = bonus(valueUSD);
 
         checkDeadline(deadline, "sell");
-        SellResponse sale = airlines.sell(request.flight(), request.day());           // 3
+        SellResponse sale = sell(request);                                             // 3
 
-        checkDeadline(deadline, "bonus");
-        fidelity.bonus(request.user(), bonus);                                         // 4
-
+        // A venda está confirmada: é gravada antes do bônus, e a falha dele não vira erro.
         sales.save(new Sale(CorrelationContext.getCid(), sale.transactionId(), request.flight(),
                 request.day(), request.user(), valueUSD, valueBRL, Instant.now()));
 
+        List<String> degradations = new ArrayList<>();
+        creditBonus(deadline, sale.transactionId(), request.user(), bonus, degradations); // 4
+
         return new BuyTicketResponse(sale.transactionId(), request.flight(), request.day(),
-                request.user(), valueUSD, valueBRL, conv.rate(), conv.asOf(), bonus);
+                request.user(), valueUSD, valueBRL, conv.rate(), conv.asOf(), bonus,
+                !degradations.isEmpty(), List.copyOf(degradations));
+    }
+
+    private SellResponse sell(BuyTicketRequest request) {
+        try {
+            return airlines.sell(request.flight(), request.day());
+        } catch (SaleUnknownException e) {
+            logger.logSaleUnknown(CorrelationContext.getCid(), request.flight(), request.day(),
+                    request.user(), e.getReason());
+            throw e;
+        }
+    }
+
+    private void creditBonus(RequestDeadline deadline, String transactionId, String user, int bonus,
+            List<String> degradations) {
+        try {
+            checkDeadline(deadline, "bonus");
+            fidelity.bonus(user, bonus);
+        } catch (RuntimeException e) {
+            logger.logBonusNotCredited(CorrelationContext.getCid(), transactionId, user, bonus,
+                    e.getClass().getSimpleName());
+            degradations.add(BONUS_NOT_CREDITED);
+        }
     }
 
     private void checkDeadline(RequestDeadline deadline, String stage) {
