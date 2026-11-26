@@ -1,0 +1,39 @@
+== Cenário: container pausado (airlineshub)
+   Objetivo: medir comportamento da BASELINE sob dependência congelada (P1: prazo total 5000 ms)
+   X-Correlation-Id: baseline-paused-1795696343
+   Compra: IMD200 em 2026-12-05 para usuário paused-1795696343
+
+== 1. Pausando container airlineshub
+SERVICE       STATUS
+airlineshub   Up 2 minutes (Paused)
+exchange      Up 2 minutes (healthy)
+fidelity      Up About a minute (healthy)
+imdtravel     Up 43 seconds (healthy)
+
+== 2. Disparando POST /buyTicket com --max-time 15 no cliente (curl)
+   curl_exit=28  http_code=000 time_total=15.012057s
+   ⚠ Timeout do cliente após 15s: IMDTravel BASELINE ficou bloqueado esperando airlineshub pausado (viola P1: > 5000ms).
+
+== 3. Despausando container airlineshub
+SERVICE       STATUS
+airlineshub   Up 2 minutes (unhealthy)
+exchange      Up 2 minutes (healthy)
+fidelity      Up About a minute (healthy)
+imdtravel     Up About a minute (healthy)
+
+== 4. Balanço após unpause
+   assentos antes -> depois: 15 -> 14 (consumidos: 1)
+   vendas registradas em /sales: 1
+   bônus creditados no Fidelity: 1
+
+== 5. Caminho da compra baseline-paused-1795696343 pelos logs (X-Correlation-Id)
+   12:32:26.489  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:32:42.208  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:32:42.215  airlineshub  resposta.enviada  ms=6  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:32:42.296  exchange  requisicao.recebida  /convert
+   12:32:42.303  exchange  resposta.enviada  ms=6  /convert  status=200
+   12:32:42.360  airlineshub  requisicao.recebida  /sell
+   12:32:43.114  airlineshub  resposta.enviada  ms=753  /sell  status=201
+   12:32:43.131  fidelity  requisicao.recebida  /bonus
+   12:32:43.243  fidelity  resposta.enviada  ms=115  /bonus  status=201
+   12:32:43.336  imdtravel  resposta.enviada  ms=16851  /buyTicket  status=201

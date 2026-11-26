@@ -1,0 +1,58 @@
+
+== Cenário: resposta
+   falha no endpoint de CONVERT, serviço exchange: FAULT_CONVERT_P=1 FAULT_CONVERT_TTL_SEC=0
+   5 compras de IMD200 em 2026-12-05 para o usuário cen1795696095, uma a cada 1 s
+
+== Preparando: recriando AirlinesHub, Exchange e Fidelity (falha ligada em exchange)
+   pronto: estoque reiniciado, falha ligada em exchange, IMDTravel reiniciado
+
+== Compras
+   nº   t(s)   status duração   resultado
+   1    +0     201    1.609235s valueBRL=-2584.79  rate=-5.5054
+   2    +1     201    0.685412s valueBRL=0.00  rate=0
+   3    +2     500    0.036275s internal-error
+   4    +3     201    0.515616s valueBRL=-2584.79  rate=-5.5054
+   5    +4     201    0.857083s valueBRL=0.00  rate=0
+
+== Balanço
+   compras respondidas com 201                  4 de 5
+   compras respondidas com 500                  1
+   assentos consumidos no AirlinesHub           4  (estoque 20 → 16)
+   vendas registradas no IMDTravel (/sales)     4
+   bônus creditados no Fidelity                 4
+
+   ⚠ 4 venda(s) registrada(s) com taxa fora da faixa [5.00, 6.00] — aceitas com 201
+
+== Caminho da compra cen1795696095-1 pelos logs (X-Correlation-Id)
+   12:28:51.411  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:28:51.585  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:28:51.685  airlineshub  resposta.enviada  ms=105  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:28:51.754  exchange  requisicao.recebida  /convert
+   12:28:51.756  exchange  falha.disparada  tipo=resposta
+   12:28:51.826  exchange  falha.corrupcao  variante=negativo rateEnviado=-5.5054
+   12:28:51.832  exchange  falha.aplicada  ms=0  tipo=resposta
+   12:28:51.833  exchange  resposta.enviada  ms=78  /convert  status=200
+   12:28:51.868  airlineshub  requisicao.recebida  /sell
+   12:28:52.791  airlineshub  resposta.enviada  ms=922  /sell  status=201
+   12:28:52.805  fidelity  requisicao.recebida  /bonus
+   12:28:52.932  fidelity  resposta.enviada  ms=128  /bonus  status=201
+   12:28:53.011  imdtravel  resposta.enviada  ms=1599  /buyTicket  status=201
+
+== Eventos da falha em exchange (todas as compras)
+   12:28:51.756  cen1795696095-1  falha.disparada  fimJanela=12:28:51.756
+   12:28:51.826  cen1795696095-1  falha.corrupcao  variante=negativo
+   12:28:51.832  cen1795696095-1  falha.aplicada  ms=0  disparou=true  fimJanela=12:28:51.756
+   12:28:52.487  cen1795696095-2  falha.disparada  fimJanela=12:28:52.487
+   12:28:52.489  cen1795696095-2  falha.aplicada  ms=0  disparou=true  fimJanela=12:28:52.487
+   12:28:52.489  cen1795696095-2  falha.corrupcao  variante=zero
+   12:28:53.551  cen1795696095-3  falha.disparada  fimJanela=12:28:53.551
+   12:28:53.554  cen1795696095-3  falha.aplicada  ms=0  disparou=true  fimJanela=12:28:53.551
+   12:28:53.554  cen1795696095-3  falha.corrupcao  variante=nao_numerico
+   12:28:54.652  cen1795696095-4  falha.disparada  fimJanela=12:28:54.652
+   12:28:54.655  cen1795696095-4  falha.aplicada  ms=0  disparou=true  fimJanela=12:28:54.652
+   12:28:54.655  cen1795696095-4  falha.corrupcao  variante=negativo
+   12:28:55.696  cen1795696095-5  falha.disparada  fimJanela=12:28:55.696
+   12:28:55.699  cen1795696095-5  falha.aplicada  ms=0  disparou=true  fimJanela=12:28:55.696
+   12:28:55.699  cen1795696095-5  falha.corrupcao  variante=zero
+
+   falha desligada: exchange recriado com os valores padrão (e IMDTravel reiniciado)

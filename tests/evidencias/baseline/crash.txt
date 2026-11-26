@@ -1,0 +1,49 @@
+
+== Cenário: crash
+   falha no endpoint de BONUS, serviço fidelity: FAULT_BONUS_P=1 FAULT_BONUS_TTL_SEC=10
+   5 compras de IMD200 em 2026-12-05 para o usuário cen1795696220, uma a cada 1 s
+
+== Preparando: recriando AirlinesHub, Exchange e Fidelity (falha ligada em fidelity)
+   pronto: estoque reiniciado, falha ligada em fidelity, IMDTravel reiniciado
+
+== Compras
+   nº   t(s)   status duração   resultado
+   1    +1     500    1.305336s internal-error
+   2    +2     500    0.562548s internal-error
+   3    +3     500    0.834794s internal-error
+   4    +4     500    0.559664s internal-error
+   5    +5     500    0.713478s internal-error
+
+== Balanço
+   esperando o Fidelity voltar para contar os bônus...
+   compras respondidas com 201                  0 de 5
+   compras respondidas com 500                  5
+   assentos consumidos no AirlinesHub           5  (estoque 20 → 15)
+   vendas registradas no IMDTravel (/sales)     0
+   bônus creditados no Fidelity                 0
+
+   ⚠ 5 assento(s) vendido(s) pelo AirlinesHub sem venda registrada no IMDTravel
+   ⚠ 5 assento(s) vendido(s) sem bônus creditado
+
+== Caminho da compra cen1795696220-1 pelos logs (X-Correlation-Id)
+   12:31:05.132  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:31:05.391  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:31:05.480  airlineshub  resposta.enviada  ms=92  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:31:05.529  exchange  requisicao.recebida  /convert
+   12:31:05.599  exchange  resposta.enviada  ms=73  /convert  status=200
+   12:31:05.631  airlineshub  requisicao.recebida  /sell
+   12:31:06.329  airlineshub  resposta.enviada  ms=698  /sell  status=201
+   12:31:06.346  fidelity  requisicao.recebida  /bonus
+   12:31:06.347  fidelity  falha.disparada  tipo=crash
+   12:31:06.349  fidelity  falha.aplicada  ms=0  tipo=crash
+   12:31:06.354  fidelity  resposta.omitida  ms=8  /bonus  statusOmitido=200
+   12:31:06.425  imdtravel  resposta.enviada  ms=1293  /buyTicket  status=500
+
+== Eventos da falha em fidelity (todas as compras)
+   12:31:06.347  cen1795696220-1  falha.disparada  fimJanela=12:31:16.347
+   12:31:06.349  cen1795696220-1  falha.aplicada  ms=0  disparou=true  fimJanela=12:31:16.347
+   12:31:06.354  cen1795696220-1  resposta.omitida  ms=8
+   12:31:06.369  -  falha.crash.inicio  fimJanela=12:31:16.347
+   12:31:16.356  -  falha.crash.fim  ms=10006
+
+   falha desligada: fidelity recriado com os valores padrão (e IMDTravel reiniciado)

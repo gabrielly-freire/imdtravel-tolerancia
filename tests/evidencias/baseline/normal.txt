@@ -1,0 +1,36 @@
+
+== Cenário: normal
+   5 compras de IMD200 em 2026-12-05 para o usuário cen1795695989, uma a cada 1 s
+
+== Preparando: recriando AirlinesHub, Exchange e Fidelity
+   pronto: estoque reiniciado, IMDTravel reiniciado
+
+== Compras
+   nº   t(s)   status duração   resultado
+   1    +0     201    1.186128s valueBRL=2582.44  rate=5.5004
+   2    +1     201    0.611016s valueBRL=2582.44  rate=5.5004
+   3    +2     201    0.956990s valueBRL=2582.44  rate=5.5004
+   4    +3     201    0.550485s valueBRL=2582.44  rate=5.5004
+   5    +4     201    0.943850s valueBRL=2582.44  rate=5.5004
+
+== Balanço
+   compras respondidas com 201                  5 de 5
+   compras respondidas com 500                  0
+   assentos consumidos no AirlinesHub           5  (estoque 20 → 15)
+   vendas registradas no IMDTravel (/sales)     5
+   bônus creditados no Fidelity                 5
+
+   ✓ estoque, vendas e bônus batem
+
+== Caminho da compra cen1795695989-1 pelos logs (X-Correlation-Id)
+   12:27:02.442  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:27:02.645  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:27:02.731  airlineshub  resposta.enviada  ms=90  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:27:02.782  exchange  requisicao.recebida  /convert
+   12:27:02.831  exchange  resposta.enviada  ms=50  /convert  status=200
+   12:27:02.867  airlineshub  requisicao.recebida  /sell
+   12:27:03.389  airlineshub  resposta.enviada  ms=522  /sell  status=201
+   12:27:03.410  fidelity  requisicao.recebida  /bonus
+   12:27:03.545  fidelity  resposta.enviada  ms=138  /bonus  status=201
+   12:27:03.618  imdtravel  resposta.enviada  ms=1176  /buyTicket  status=201
+

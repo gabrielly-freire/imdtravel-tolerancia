@@ -78,6 +78,10 @@ Dentro de um clone do repositório, o equivalente é:
 docker compose -f docker-compose.hub.yml up -d --wait
 ```
 
+As imagens usadas por padrão têm a tag `parte2`: são as da [Parte 2](README.md#parte-2--falhas-e-tolerância-a-falhas),
+com a injeção de falhas desligada, e se comportam como as da Parte 1. Para usar exatamente
+as imagens da Parte 1: `IMAGE_TAG=baseline docker compose -f docker-compose.hub.yml up -d --wait`.
+
 ### Conferir que subiu
 
 ```
@@ -133,6 +137,8 @@ Termina com `Resumo: N passaram, 0 falharam`. O guia completo — testes manuais
 o que cada seção do `testes.sh` verifica, como ler uma falha, variáveis de ambiente e testes
 unitários — está em **[Como testar](TESTES.md)**.
 
+Para a Parte 2, com falhas injetadas: [Testes com falhas](TESTES-FALHAS.md).
+
 ---
 
 ## 5. Catálogo e configuração
@@ -165,6 +171,10 @@ mesmo valor.
 | `EXCHANGE_MIN` / `EXCHANGE_MAX` | `5.00` / `6.00` | Exchange |
 | `IMDTRAVEL_HOST_PORT` | `8080` | porta do IMDTravel no seu computador |
 
+O `docker-compose.yml` também traz as variáveis `FAULT_*`, todas com padrão `0`: são a
+injeção de falhas da Parte 2, descrita em [Injeção de falhas](FALHAS.md). Com os padrões,
+não há falha nenhuma, como pede a Parte 1.
+
 ---
 
 ## 6. Onde fica cada coisa
@@ -173,6 +183,7 @@ mesmo valor.
 |---|---|
 | [`docker-compose.hub.yml`](docker-compose.hub.yml) | Sobe o sistema com as imagens do Docker Hub |
 | [`testes.sh`](testes.sh) | Verificação funcional |
+| [`cenario.sh`](cenario.sh) | Parte 2: observação de um cenário normal ou de uma das quatro falhas |
 | [`docs/`](docs/) | Especificações e figuras |
 
 ---

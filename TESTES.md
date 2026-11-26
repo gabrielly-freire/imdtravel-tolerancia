@@ -7,10 +7,12 @@ Três formas de conferir que o sistema faz o que a
 |---|---|---|
 | [Testes manuais com `curl`](#1-testes-manuais-com-curl) | Entender cada serviço, uma requisição por vez | — |
 | [`testes.sh`](#2-o-script-testessh) | Verificar o sistema inteiro, de fora, com um comando | ~10 s |
-| [Testes unitários](#3-testes-unitários) | Verificar a lógica de cada serviço, sem subir containers | ~1 min |
 
 Todas partem do sistema no ar. Para instalar o ambiente e subir os serviços, veja
 [Como executar](EXECUCAO.md).
+
+Estes são os testes da **Parte 1**, com as dependências sadias. Os testes com falhas
+injetadas são da Parte 2 e estão em [Testes com falhas](TESTES-FALHAS.md).
 
 ---
 
@@ -212,5 +214,3 @@ antes de testar e diz qual projeto está no ar e onde ele foi subido.
 | No Windows: `bad interpreter` ou `$'\r': command not found` | O arquivo ficou com fim de linha CRLF: `sed -i 's/\r$//' testes.sh`. |
 | `nenhum par com assento livre — rode com --reiniciar` | O catálogo inteiro foi vendido: `./testes.sh --reiniciar`. |
 | A seção 7 parece travada | É esperado: com o Fidelity parado, a compra pode levar mais de dois minutos para dar 500 (não há timeout na Parte 1). O script espera até 10 minutos. |
-
----
