@@ -18,12 +18,15 @@ import org.junit.jupiter.api.Test;
 import br.ufrn.imd.imdtravel.client.AirlinesClient;
 import br.ufrn.imd.imdtravel.client.ExchangeClient;
 import br.ufrn.imd.imdtravel.client.FidelityClient;
+import br.ufrn.imd.imdtravel.config.JsonLogger;
+import br.ufrn.imd.imdtravel.config.ResilienceProperties;
 import br.ufrn.imd.imdtravel.dtos.BuyTicketRequest;
 import br.ufrn.imd.imdtravel.dtos.BuyTicketResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.BonusResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.ConvertResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.FlightResponse;
 import br.ufrn.imd.imdtravel.dtos.clients.SellResponse;
+import br.ufrn.imd.imdtravel.exceptions.DeadlineExceededException;
 import br.ufrn.imd.imdtravel.exceptions.InvalidRequestException;
 import br.ufrn.imd.imdtravel.exceptions.SoldOutException;
 import br.ufrn.imd.imdtravel.models.Sale;
@@ -43,7 +46,8 @@ class BuyTicketServiceTest {
         exchange = mock(ExchangeClient.class);
         fidelity = mock(FidelityClient.class);
         sales = mock(SalesRepository.class);
-        service = new BuyTicketService(airlines, exchange, fidelity, sales);
+        service = new BuyTicketService(airlines, exchange, fidelity, sales,
+                ResilienceProperties.defaults(), new JsonLogger("imdtravel"));
     }
 
     private void stubHappyPath() {
@@ -100,6 +104,24 @@ class BuyTicketServiceTest {
         when(fidelity.bonus(anyString(), anyInt())).thenThrow(new RuntimeException("fidelity down"));
 
         assertThrows(RuntimeException.class, () -> service.buy(new BuyTicketRequest("IMD100", "2026-12-01", "ana")));
+        verify(sales, never()).save(any());
+    }
+
+    @Test
+    void shouldStopBeforeCallingNextStageWhenDeadlineExceeded() {
+        ResilienceProperties tightDeadline = new ResilienceProperties(1000L, 500L, 2000L, 500L, 40L, 50, 4, 2, 5000L, 1);
+        BuyTicketService tightService = new BuyTicketService(
+                airlines, exchange, fidelity, sales, tightDeadline, new JsonLogger("imdtravel"));
+
+        when(airlines.getFlight("IMD100", "2026-12-01")).thenAnswer(inv -> {
+            Thread.sleep(60L);
+            return new FlightResponse("IMD100", "2026-12-01", new BigDecimal("350.50"), 20);
+        });
+
+        assertThrows(DeadlineExceededException.class,
+                () -> tightService.buy(new BuyTicketRequest("IMD100", "2026-12-01", "ana")));
+        verify(exchange, never()).convert();
+        verify(airlines, never()).sell(anyString(), anyString());
         verify(sales, never()).save(any());
     }
 }
