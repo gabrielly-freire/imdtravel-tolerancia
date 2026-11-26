@@ -43,6 +43,47 @@ public class JsonLogger {
         writeLine(entry);
     }
 
+    public void logCircuitBreakerTransition(String endpoint, String fromState, String toState) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        String cid = CorrelationContext.getCid();
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "cb.transicao");
+        entry.put("endpoint", endpoint);
+        entry.put("de", fromState);
+        entry.put("para", toState);
+        writeLine(entry);
+    }
+
+    public void logCircuitBreakerRejected(String cid, String endpoint) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "cb.rejeitada");
+        entry.put("endpoint", endpoint);
+        writeLine(entry);
+    }
+
+    public void logDeadlineExceeded(String cid, String stage, long elapsedMs, long deadlineMs) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "prazo.excedido");
+        entry.put("etapa", stage);
+        entry.put("ms", elapsedMs);
+        entry.put("limiteMs", deadlineMs);
+        writeLine(entry);
+    }
+
     private void writeLine(Map<String, Object> entry) {
         try {
             System.out.println(objectMapper.writeValueAsString(entry));

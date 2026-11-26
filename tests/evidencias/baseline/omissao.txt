@@ -1,0 +1,52 @@
+
+== Cenário: omissao
+   falha no endpoint de SELL, serviço airlineshub: FAULT_SELL_P=1 FAULT_SELL_TTL_SEC=5
+   5 compras de IMD200 em 2026-12-05 para o usuário cen1795696156, uma a cada 1 s
+
+== Preparando: recriando AirlinesHub, Exchange e Fidelity (falha ligada em airlineshub)
+   pronto: estoque reiniciado, falha ligada em airlineshub, IMDTravel reiniciado
+
+== Compras
+   nº   t(s)   status duração   resultado
+   1    +0     500    5.430338s internal-error
+   2    +1     500    4.366138s internal-error
+   3    +2     500    3.300171s internal-error
+   4    +3     500    2.235002s internal-error
+   5    +4     500    1.168014s internal-error
+
+== Balanço
+   compras respondidas com 201                  0 de 5
+   compras respondidas com 500                  5
+   assentos consumidos no AirlinesHub           5  (estoque 20 → 15)
+   vendas registradas no IMDTravel (/sales)     0
+   bônus creditados no Fidelity                 0
+
+   ⚠ 5 assento(s) vendido(s) pelo AirlinesHub sem venda registrada no IMDTravel
+   ⚠ 5 assento(s) vendido(s) sem bônus creditado
+
+== Caminho da compra cen1795696156-1 pelos logs (X-Correlation-Id)
+   12:29:48.158  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:29:48.347  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:29:48.388  airlineshub  resposta.enviada  ms=41  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:29:48.428  exchange  requisicao.recebida  /convert
+   12:29:48.476  exchange  resposta.enviada  ms=49  /convert  status=200
+   12:29:48.501  airlineshub  requisicao.recebida  /sell
+   12:29:48.502  airlineshub  falha.disparada  tipo=omissao
+   12:29:49.290  airlineshub  falha.aplicada  ms=4213  statusOmitido=201  tipo=omissao
+   12:29:53.503  airlineshub  resposta.omitida  ms=5002  /sell  statusOmitido=201
+   12:29:53.577  imdtravel  resposta.enviada  ms=5419  /buyTicket  status=500
+
+== Eventos da falha em airlineshub (todas as compras)
+   12:29:48.502  cen1795696156-1  falha.disparada  fimJanela=12:29:53.502
+   12:29:49.290  cen1795696156-1  falha.aplicada  ms=4213  disparou=true  fimJanela=12:29:53.502
+   12:29:49.800  cen1795696156-2  falha.aplicada  ms=3702  disparou=false  fimJanela=12:29:53.502
+   12:29:50.933  cen1795696156-3  falha.aplicada  ms=2569  disparou=false  fimJanela=12:29:53.502
+   12:29:52.075  cen1795696156-4  falha.aplicada  ms=1427  disparou=false  fimJanela=12:29:53.502
+   12:29:52.959  cen1795696156-5  falha.aplicada  ms=543  disparou=false  fimJanela=12:29:53.502
+   12:29:53.502  cen1795696156-3  resposta.omitida  ms=3188
+   12:29:53.502  cen1795696156-4  resposta.omitida  ms=2119
+   12:29:53.503  cen1795696156-1  resposta.omitida  ms=5002
+   12:29:53.503  cen1795696156-2  resposta.omitida  ms=4256
+   12:29:53.503  cen1795696156-5  resposta.omitida  ms=1061
+
+   falha desligada: airlineshub recriado com os valores padrão (e IMDTravel reiniciado)

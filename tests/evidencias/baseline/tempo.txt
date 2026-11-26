@@ -1,0 +1,54 @@
+
+== Cenário: tempo
+   falha no endpoint de FLIGHT, serviço airlineshub: FAULT_FLIGHT_P=1 FAULT_FLIGHT_TTL_SEC=3
+   5 compras de IMD200 em 2026-12-05 para o usuário cen1795696031, uma a cada 1 s
+
+== Preparando: recriando AirlinesHub, Exchange e Fidelity (falha ligada em airlineshub)
+   pronto: estoque reiniciado, falha ligada em airlineshub, IMDTravel reiniciado
+
+== Compras
+   nº   t(s)   status duração   resultado
+   1    +0     201    4.516780s valueBRL=2579.53  rate=5.4942
+   2    +1     201    3.436858s valueBRL=2579.53  rate=5.4942
+   3    +2     201    2.256317s valueBRL=2579.53  rate=5.4942
+   4    +3     201    1.199037s valueBRL=2579.53  rate=5.4942
+   5    +4     201    3.661880s valueBRL=2572.53  rate=5.4793
+
+== Balanço
+   lendo o estoque pelo GET /flight (que também sofre o atraso)...
+   compras respondidas com 201                  5 de 5
+   compras respondidas com 500                  0
+   assentos consumidos no AirlinesHub           5  (estoque 20 → 15)
+   vendas registradas no IMDTravel (/sales)     5
+   bônus creditados no Fidelity                 5
+
+   ✓ estoque, vendas e bônus batem
+
+== Caminho da compra cen1795696031-1 pelos logs (X-Correlation-Id)
+   12:27:39.658  imdtravel  requisicao.recebida  ms=0  /buyTicket
+   12:27:39.913  airlineshub  requisicao.recebida  /flight?flight=IMD200&day=2026-12-05
+   12:27:39.914  airlineshub  falha.disparada  tipo=tempo
+   12:27:39.915  airlineshub  falha.aplicada  ms=2999  tipo=tempo
+   12:27:42.970  airlineshub  resposta.enviada  ms=3057  /flight?flight=IMD200&day=2026-12-05  status=200
+   12:27:43.038  exchange  requisicao.recebida  /convert
+   12:27:43.160  exchange  resposta.enviada  ms=124  /convert  status=200
+   12:27:43.212  airlineshub  requisicao.recebida  /sell
+   12:27:44.132  airlineshub  resposta.enviada  ms=919  /sell  status=201
+   12:27:44.138  fidelity  requisicao.recebida  /bonus
+   12:27:44.142  fidelity  resposta.enviada  ms=3  /bonus  status=201
+   12:27:44.166  imdtravel  resposta.enviada  ms=4507  /buyTicket  status=201
+
+== Eventos da falha em airlineshub (todas as compras)
+   12:27:39.914  cen1795696031-1  falha.disparada  fimJanela=12:27:42.914
+   12:27:39.915  cen1795696031-1  falha.aplicada  ms=2999  disparou=true  fimJanela=12:27:42.914
+   12:27:40.730  cen1795696031-2  falha.aplicada  ms=2184  disparou=false  fimJanela=12:27:42.914
+   12:27:41.795  cen1795696031-3  falha.aplicada  ms=1119  disparou=false  fimJanela=12:27:42.914
+   12:27:42.851  cen1795696031-4  falha.aplicada  ms=63  disparou=false  fimJanela=12:27:42.914
+   12:27:43.937  cen1795696031-5  falha.janela.fechada  fimJanela=12:27:42.914
+   12:27:43.938  cen1795696031-5  falha.disparada  fimJanela=12:27:46.937
+   12:27:43.939  cen1795696031-5  falha.aplicada  ms=2998  disparou=true  fimJanela=12:27:46.937
+   12:27:48.859  cen1795696031-leitura  falha.aplicada  ms=3000  disparou=true  fimJanela=12:27:51.859
+   12:27:48.859  cen1795696031-leitura  falha.disparada  fimJanela=12:27:51.859
+   12:27:48.859  cen1795696031-leitura  falha.janela.fechada  fimJanela=12:27:46.937
+
+   falha desligada: airlineshub recriado com os valores padrão (e IMDTravel reiniciado)

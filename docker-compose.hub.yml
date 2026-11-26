@@ -1,14 +1,18 @@
-# IMDTravel — Parte 1 (BASELINE), usando as imagens publicadas no Docker Hub.
+# IMDTravel usando as imagens publicadas no Docker Hub.
 #
 # Para quem só quer rodar o sistema:
-#   1. baixe só este arquivo numa pasta vazia, com o nome docker-compose.yml
+#   1. baixe só este arquivo numa pasta vazia
 #   2. docker compose -f docker-compose.hub.yml up -d --wait
 #   3. curl http://localhost:8080/health
 #
 # Dentro do repositório: docker compose -f docker-compose.hub.yml up -d --wait
 #
 # Imagens para linux/amd64 e linux/arm64 — rodam também no Windows (Docker Desktop
-# com WSL 2) e em Macs Apple Silicon. Para outra versão: IMAGE_TAG=... docker compose up
+# com WSL 2) e em Macs Apple Silicon.
+#
+# Tag padrão: parte2 — as dependências com a injeção de falhas (FAULT_*, desligada por
+# padrão). Sem nenhuma FAULT_* ligada, elas se comportam como as da Parte 1.
+# Para as imagens da Parte 1: IMAGE_TAG=baseline docker compose -f docker-compose.hub.yml up -d
 
 x-healthcheck: &healthcheck
   test: ["CMD-SHELL", "curl -fsS http://localhost:$${PORT}/health"]
@@ -19,7 +23,7 @@ x-healthcheck: &healthcheck
 
 services:
   airlineshub:
-    image: gibeonufrn/imdtravel-airlineshub:${IMAGE_TAG:-baseline}
+    image: gibeonufrn/imdtravel-airlineshub:${IMAGE_TAG:-parte2}
     environment:
       PORT: 8080
       CATALOG_FLIGHTS: ${CATALOG_FLIGHTS:-IMD100,IMD200,IMD300}
@@ -30,10 +34,16 @@ services:
       CATALOG_SEATS: ${CATALOG_SEATS:-20}
       SELL_MIN_MS: ${SELL_MIN_MS:-300}
       SELL_MAX_MS: ${SELL_MAX_MS:-900}
+      # Injeção de falhas (docs/injecao-falhas-plano.md). Tipos fixos: /flight = Tempo,
+      # /sell = Omissão. _P = probabilidade por requisição; _TTL_SEC = duração da falha.
+      FAULT_FLIGHT_P: ${FAULT_FLIGHT_P:-0}
+      FAULT_FLIGHT_TTL_SEC: ${FAULT_FLIGHT_TTL_SEC:-0}
+      FAULT_SELL_P: ${FAULT_SELL_P:-0}
+      FAULT_SELL_TTL_SEC: ${FAULT_SELL_TTL_SEC:-0}
     healthcheck: *healthcheck
 
   exchange:
-    image: gibeonufrn/imdtravel-exchange:${IMAGE_TAG:-baseline}
+    image: gibeonufrn/imdtravel-exchange:${IMAGE_TAG:-parte2}
     environment:
       PORT: 8080
       EXCHANGE_INITIAL_RATE: ${EXCHANGE_INITIAL_RATE:-5.50}
@@ -41,16 +51,22 @@ services:
       EXCHANGE_MAX_STEP_PCT: ${EXCHANGE_MAX_STEP_PCT:-0.3}
       EXCHANGE_MIN: ${EXCHANGE_MIN:-5.00}
       EXCHANGE_MAX: ${EXCHANGE_MAX:-6.00}
+      # Injeção de falhas. Tipo fixo: /convert = Resposta.
+      FAULT_CONVERT_P: ${FAULT_CONVERT_P:-0}
+      FAULT_CONVERT_TTL_SEC: ${FAULT_CONVERT_TTL_SEC:-0}
     healthcheck: *healthcheck
 
   fidelity:
-    image: gibeonufrn/imdtravel-fidelity:${IMAGE_TAG:-baseline}
+    image: gibeonufrn/imdtravel-fidelity:${IMAGE_TAG:-parte2}
     environment:
       PORT: 8080
+      # Injeção de falhas. Tipo fixo: /bonus = Crash.
+      FAULT_BONUS_P: ${FAULT_BONUS_P:-0}
+      FAULT_BONUS_TTL_SEC: ${FAULT_BONUS_TTL_SEC:-0}
     healthcheck: *healthcheck
 
   imdtravel:
-    image: gibeonufrn/imdtravel-imdtravel:${IMAGE_TAG:-baseline}
+    image: gibeonufrn/imdtravel-imdtravel:${IMAGE_TAG:-parte2}
     environment:
       PORT: 8080
       SALES_DIR: /data

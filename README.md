@@ -42,6 +42,38 @@ Esta versão servirá como base de comparação para a **Parte 2**, onde as estr
 
 ---
 
+## Parte 2: Tolerância a Falhas (`FAULT-TOLERANT`)
+
+Na Parte 2, o `imdtravel` passa a aplicar estratégias de tolerância a falhas mantendo **1 container por serviço** (sem replicação) e sem alterar os serviços de dependência (imagens `:parte2` com injeção de falhas configurável via `FAULT_*`).
+
+### Parâmetros de Resiliência (Variáveis de Ambiente)
+
+Todos os parâmetros possuem valor padrão declarado no [`docker-compose.yml`](docker-compose.yml):
+
+| Variável | Padrão | Justificativa |
+|---|---|---|
+| `TIMEOUT_FLIGHT_MS` | `1400` | Tolera picos de concorrência (25 requisições simultâneas) e cold start do `AirlinesHub` (`GET /flight`), mas corta rapidamente chamadas presas em falha de Tempo ou container pausado (`TTL >= 3 s`). |
+| `TIMEOUT_CONVERT_MS` | `700` | Margem segura para cold start do `Exchange` (`GET /convert`, normalmente `< 150 ms`), falhando rápido se o serviço travar. |
+| `TIMEOUT_SELL_MS` | `1600` | Cobre a latência nominal do `POST /sell` (`SELL_MAX_MS=900 ms`) com folga de `700 ms`, interrompendo bem antes da janela de Omissão (`5 s`). |
+| `TIMEOUT_BONUS_MS` | `1100` | Acomoda o aquecimento inicial do `Fidelity` (`~980 ms` medidos na primeira chamada em container), evitando falso positivo de timeout na subida. |
+| `DEADLINE_TOTAL_MS` | `4500` | Prazo interno global verificado antes de cada chamada externa (`RequestDeadline`), garantindo `500 ms` de margem abaixo do teto obrigatório de `5000 ms` (**P1**). |
+| `CB_FAILURE_RATE_THRESHOLD` | `50` | Percentual de falhas na janela deslizante que dispara a abertura do Circuit Breaker (`CLOSED → OPEN`). |
+| `CB_SLIDING_WINDOW_SIZE` | `6` | Janela baseada em contagem por endpoint (`flight`, `convert`, `sell`, `bonus`), evitando abertura por jitter pontual em rajadas concorrentes. |
+| `CB_MINIMUM_NUMBER_OF_CALLS` | `3` | Número mínimo de chamadas antes de avaliar a taxa de falha: impede que 1–2 timeouts isolados abram o circuito, mas reage rápido sob falha persistente. |
+| `CB_WAIT_DURATION_OPEN_MS` | `5000` | Tempo em estado `OPEN` rejeitando requisições localmente (fail-fast) antes de transicionar automaticamente para `HALF_OPEN`. |
+| `CB_HALF_OPEN_PERMITTED_CALLS` | `1` | Quantidade de chamadas de sondagem permitidas em `HALF_OPEN` para confirmar recuperação sem sobrecarregar a dependência. |
+
+> **Endpoint `GET /status` (esquema provisório):** retorna `"status": "ok" | "degraded"`, o estado atual e métricas de cada um dos 4 circuit breakers (`flight`, `convert`, `sell`, `bonus`) e a configuração ativa. (Validar com professor)
+
+### Tabela de Rastreabilidade (Parte 2)
+
+| Falha tolerada | Estratégia adotada (padrão do catálogo) | Onde está no código | Teste que demonstra |
+|---|---|---|---|
+| **P1** (Prazo total `<= 5000 ms`, inclusive com container pausado) | **Timeout por chamada** (`connectTimeout` + `readTimeout` em HTTP/1.1 por endpoint) + **Prazo interno global (`RequestDeadline`)** antes de cada etapa | [`RestClientConfig.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/RestClientConfig.java), [`ResilienceProperties.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ResilienceProperties.java), [`RequestDeadline.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/services/RequestDeadline.java), [`BuyTicketService.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/services/BuyTicketService.java) | `BuyTicketServiceTest#shouldStopBeforeCallingNextStageWhenDeadlineExceeded`, `ResilienceTest#requestDeadlineTracksElapsedAndThrowsWhenExpired`, `docker compose pause airlineshub` (`~1.4s` → `504`) |
+| **P7** (Falha rápida sob falha persistente, proteção contra sobrecarga e volta automática) | **Circuit Breaker isolado por endpoint** (`Resilience4j`, `COUNT_BASED`, ignora `404`/`409`) + **`GET /status`** + logs `cb.transicao` / `cb.rejeitada` | [`ResilienceConfig.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ResilienceConfig.java), [`AirlinesHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/AirlinesHttpClient.java), [`ExchangeHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/ExchangeHttpClient.java), [`FidelityHttpClient.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/client/FidelityHttpClient.java), [`StatusController.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/controllers/StatusController.java), [`ApiExceptionHandler.java`](imdtravel/src/main/java/br/ufrn/imd/imdtravel/config/ApiExceptionHandler.java) | `ResilienceTest#circuitBreakerOpensAtThresholdRejectsFastAndRecoversAutomatically`, `ResilienceTest#businessExceptionsDoNotOpenCircuitBreaker`, `./cenario.sh tempo 1 8 6` (`503` em `~11–14 ms` após abrir e volta automática em `6 s`) |
+
+---
+
 ## Implementação da Equipe (`imdtravel`)
 
 O serviço **IMDTravel** foi desenvolvido pela equipe em **Java 21** com **Spring Boot 4**:

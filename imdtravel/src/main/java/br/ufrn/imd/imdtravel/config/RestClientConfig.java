@@ -1,5 +1,8 @@
 package br.ufrn.imd.imdtravel.config;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
@@ -28,5 +31,20 @@ public class RestClientConfig {
         return RestClient.builder()
                 .requestFactory(new JdkClientHttpRequestFactory())
                 .requestInterceptor(correlationIdInterceptor);
+    }
+
+    public RestClient createClient(String baseUrl, long timeoutMs) {
+        Duration timeout = Duration.ofMillis(timeoutMs);
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(timeout)
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(timeout);
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .requestInterceptor(correlationIdInterceptor())
+                .build();
     }
 }
