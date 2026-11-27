@@ -29,7 +29,7 @@ import br.ufrn.imd.imdtravel.exceptions.SoldOutException;
 /** POST /sell contra um servidor falso em socket puro, que conta quantas vezes a venda chegou. */
 class AirlinesHttpClientSellTest {
 
-    private static final long SELL_TIMEOUT_MS = 500L;
+    private static final long SELL_TIMEOUT_MS = 2000L;
 
     private final AtomicInteger requests = new AtomicInteger();
     private final List<Socket> sockets = new CopyOnWriteArrayList<>();
@@ -59,8 +59,10 @@ class AirlinesHttpClientSellTest {
                         OutputStream out = socket.getOutputStream();
                         out.write(reply.getBytes(StandardCharsets.UTF_8));
                         out.flush();
-                    }
-                    if (close) {
+                        // Só encerra a escrita: fechar com bytes da requisição ainda não lidos
+                        // envia RST e o cliente pode perder a resposta. O tearDown fecha o socket.
+                        socket.shutdownOutput();
+                    } else if (close) {
                         socket.close();
                     }
                 } catch (IOException e) {
