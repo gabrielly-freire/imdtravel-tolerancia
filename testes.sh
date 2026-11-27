@@ -213,6 +213,7 @@ B="$(corpo "$VOO" "$DIA" "$USUARIO")"
 STATUS="$(compra c1 "$B" "$CID")"
 
 confere "status 201" "$STATUS" "201"
+confere_jq "compra normal não é degradada" '.degraded==false and .degradations==[]' "$TMP/c1.json"
 confere_jq "resposta tem os 9 campos, nenhum nulo" \
     '[.transactionId,.flight,.day,.user,.valueUSD,.valueBRL,.rate,.rateAsOf,.bonus] | all(. != null)' "$TMP/c1.json"
 confere_jq "flight, day e user ecoam o pedido" \
@@ -314,7 +315,7 @@ fi
 # ------------------------------------------------------------------ 7. falha (opcional)
 
 if [ "$COM_FALHAS" = 1 ]; then
-    secao "7. Fidelity parado: falha depois do passo irreversível"
+    secao "7. Fidelity parado: a venda confirmada não vira erro"
     read -r VOO4 DIA4 <<< "$(par_com_assentos 1 "$VOO3 $DIA3")"
     ANTES_ASSENTOS="$(assentos "$VOO4" "$DIA4")"
     ANTES_VENDAS="$(total_vendas)"
@@ -325,9 +326,11 @@ if [ "$COM_FALHAS" = 1 ]; then
     DURACAO=$(( $(date +%s) - INICIO ))
     docker compose start fidelity >/dev/null 2>&1
     echo "  a compra levou ${DURACAO}s para responder"
-    confere "a compra devolveu 500" "$STATUS" "500"
-    confere "o assento foi consumido mesmo assim" "$(assentos "$VOO4" "$DIA4")" "$((ANTES_ASSENTOS - 1))"
-    confere "nenhuma linha nova em GET /sales" "$(total_vendas)" "$ANTES_VENDAS"
+    confere "a compra devolveu 201" "$STATUS" "201"
+    confere_jq "a resposta declara o bônus não creditado" \
+        '.degraded==true and .degradations==["bonus-not-credited"]' "$TMP/f1.json"
+    confere "o assento foi consumido uma vez" "$(assentos "$VOO4" "$DIA4")" "$((ANTES_ASSENTOS - 1))"
+    confere "GET /sales ganhou exatamente 1 linha" "$(total_vendas)" "$((ANTES_VENDAS + 1))"
     esperar_saudavel fidelity || echo "  aviso: o Fidelity não voltou a ficar saudável"
 fi
 

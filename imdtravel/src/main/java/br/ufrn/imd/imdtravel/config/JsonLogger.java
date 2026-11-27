@@ -84,6 +84,63 @@ public class JsonLogger {
         writeLine(entry);
     }
 
+    public void logSaleUnknown(String cid, String flight, String day, String user, String reason) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "venda.desconhecida");
+        entry.put("flight", flight);
+        entry.put("day", day);
+        entry.put("user", user);
+        entry.put("motivo", reason);
+        writeLine(entry);
+    }
+
+    public void logBonusNotCredited(String cid, String transactionId, String user, int bonus, String reason) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "bonus.nao_creditado");
+        entry.put("transactionId", transactionId);
+        entry.put("user", user);
+        entry.put("bonus", bonus);
+        entry.put("motivo", reason);
+        writeLine(entry);
+    }
+
+    public void logCacheUsed(String cid, String data, long ageMs, String reason) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "cache.usado");
+        entry.put("dado", data);
+        entry.put("idadeMs", ageMs);
+        entry.put("motivo", reason);
+        writeLine(entry);
+    }
+
+    public void logCacheMiss(String cid, String data, String reason) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("ts", Instant.now().toString());
+        entry.put("svc", serviceName);
+        if (cid != null && !cid.isBlank()) {
+            entry.put("cid", cid);
+        }
+        entry.put("event", "cache.sem_dado");
+        entry.put("dado", data);
+        entry.put("motivo", reason);
+        writeLine(entry);
+    }
+
     private void writeLine(Map<String, Object> entry) {
         try {
             System.out.println(objectMapper.writeValueAsString(entry));
